@@ -1,0 +1,148 @@
+{
+  "title": "Pošta Srbije",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Podešavanje Pošte Srbije",
+        "description": "Praćenje Pošte Srbije ne traži nalog ni poštanski broj — čvor se pravi odmah. Pakete dodajete kasnije u opcijama integracije ili preko servisa `posta_srbije.track_parcel`."
+      }
+    },
+    "abort": {
+      "already_configured": "Pošta Srbije je već podešena."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcije Pošte Srbije",
+        "menu_options": {
+          "parcels": "Paketi",
+          "settings": "Podešavanja"
+        },
+        "sections": {
+          "parcels": {
+            "name": "Paketi",
+            "data": {
+              "add": "Dodaj paket",
+              "remove": "Ukloni pakete"
+            },
+            "data_description": {
+              "add": "Unesite broj pošiljke Pošte Srbije da biste počeli da je pratite. Nalazi se na potvrdi o slanju ili na obaveštenju o neuspeloj dostavi."
+            }
+          },
+          "delivered": {
+            "name": "Dostavljeni paketi",
+            "data": {
+              "delivered_filter_type": "Filtriraj po",
+              "delivered_filter_amount": "Količina"
+            },
+            "data_description": {
+              "delivered_filter_type": "Prikaži dostavljene pakete iz poslednjih X dana ili ograniči na X najnovijih.",
+              "delivered_filter_amount": "Broj dana ili paketa za prikaz."
+            }
+          },
+          "history": {
+            "name": "Istorija paketa",
+            "data": {
+              "include_history": "Uključi istoriju statusa"
+            },
+            "data_description": {
+              "include_history": "Dodaje atribut istorije svakom paketu sa svakim ažuriranjem statusa (vreme, status, originalni tekst). Podrazumevano isključeno."
+            }
+          }
+        }
+      },
+      "parcels": {
+        "title": "Upravljanje paketima",
+        "data": {
+          "tracking_codes": "Brojevi pošiljki"
+        }
+      },
+      "settings": {
+        "title": "Podešavanja",
+        "data": {
+          "delivered_filter_type": "Dostavljeni paketi: filtriraj po",
+          "delivered_filter_amount": "Dostavljeni paketi: količina",
+          "include_history": "Uključi istoriju statusa"
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Ovo nije važeći broj pošiljke Pošte Srbije: dva slova, devet cifara i još dva slova, obično se završava na RS. Proverite da li ste pogrešili u kucanju — deveta cifra je kontrolna cifra za osam prethodnih. Na primer LX000000014RS.",
+      "already_tracked": "Ovaj paket se već prati."
+    }
+  },
+  "selector": {
+    "delivered_filter_type": {
+      "options": {
+        "days": "Dani",
+        "parcels": "Broj paketa"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Prati paket",
+      "description": "Počnite da pratite paket Pošte Srbije preko broja pošiljke.",
+      "fields": {
+        "tracking_code": {
+          "name": "Broj pošiljke",
+          "description": "Broj pošiljke Pošte Srbije."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Prestani da pratiš paket",
+      "description": "Prestanite da pratite paket Pošte Srbije preko broja pošiljke.",
+      "fields": {
+        "tracking_code": {
+          "name": "Broj pošiljke",
+          "description": "Broj pošiljke Pošte Srbije koji više ne treba pratiti."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Paket je registrovan",
+      "parcel_status_changed": "Status paketa se promenio",
+      "parcel_delivered": "Paket je dostavljen",
+      "parcel_delivery_time_changed": "Očekivano vreme dostave paketa se promenilo"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Osveži"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Dostave"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Paketi u dolasku",
+        "unit_of_measurement": "paketa"
+      },
+      "next_delivery": {
+        "name": "Sledeća dostava"
+      },
+      "awaiting_pickup": {
+        "name": "Spremno za preuzimanje",
+        "unit_of_measurement": "paketa"
+      },
+      "delivered_parcels": {
+        "name": "Dostavljeni paketi",
+        "unit_of_measurement": "paketa"
+      },
+      "last_update": {
+        "name": "Poslednje uspešno ažuriranje"
+      },
+      "parcel": {
+        "name": "Paket {barcode}"
+      }
+    }
+  }
+}
