@@ -6,7 +6,9 @@ rewrite per carrier) can be tested as plain functions.
 """
 
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
+from homeassistant.util import dt as dt_util
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -74,7 +76,7 @@ def _status_of(*codes: str, **extra) -> ParcelStatus:
     ]
 
 
-def test_a_delivery_back_to_the_sender_is_returning_not_delivered():
+def test_a_delivery_on_the_return_leg_stays_returning_and_not_delivered():
     """The carrier words it "Delivered"; only Retur says it is a return."""
     scans = [
         event("PR", "2026-10-01T10:00:00", "Receipt", "21107 NOVI SAD"),
@@ -84,6 +86,34 @@ def test_a_delivery_back_to_the_sender_is_returning_not_delivered():
     assert parcel["status"] == ParcelStatus.RETURNING
     assert parcel["delivered"] is False
     assert parcel["delivered_at"] is None
+
+
+def test_a_return_still_on_its_way_is_not_delivered():
+    scans = [
+        event("PR", "2026-10-01T10:00:00", "Receipt", "21107 NOVI SAD"),
+        event("UO", "2026-10-05T10:00:00", "Returned", "21107 NOVI SAD"),
+    ]
+    parcel = normalize_parcel(response(scans[::-1]), tracking_code=ACTIVE_CODE)
+    assert parcel["status"] == ParcelStatus.RETURNING
+    assert parcel["delivered"] is False
+    assert parcel["delivered_at"] is None
+
+
+def test_a_pickup_scan_on_the_return_leg_is_returning_not_at_pickup_point():
+    scans = [
+        event("PR", "2099-10-01T10:00:00", "Receipt", "21107 NOVI SAD"),
+        event("UO", "2099-10-05T10:00:00", "Returned", "21107 NOVI SAD"),
+        event("IZ", "2099-10-06T10:00:00", "Issued", "11000 BEOGRAD"),
+    ]
+    parcel = normalize_parcel(
+        response(scans[::-1]), tracking_code=ACTIVE_CODE, include_history=True
+    )
+    assert parcel["status"] == ParcelStatus.RETURNING
+    assert parcel["history"][-1]["status"] == ParcelStatus.RETURNING
+
+
+def test_a_pickup_scan_before_the_return_stays_at_pickup_point():
+    assert _status_of("PR", "IZ") == ParcelStatus.AT_PICKUP_POINT
 
 
 def test_a_normal_delivery_with_retur_n_or_blank_is_delivered():
@@ -368,22 +398,22 @@ def test_serbian_office_times_are_belgrade_clock():
     )
 
 
-def test_foreign_times_use_the_countrys_clock_or_stay_as_given():
+def test_foreign_times_use_the_countrys_clock_or_the_home_assistant_zone(ha_zone):
     scans = [
-        event("OT", "2026-10-10T20:51:00", "x", "GB-GBLALA"),
-        event("OT", "2026-10-10T20:52:00", "x", "DE-DEFRAA"),
-        event("OT", "2026-10-10T20:53:00", "x", "US-USJFKA"),
-        event("OT", "2026-10-10T20:54:00", "x", "somewhere"),
+        event("OT", "2099-07-10T20:51:00", "x", "GB-GBLALA"),
+        event("OT", "2099-07-10T20:52:00", "x", "DE-DEFRAA"),
+        event("OT", "2099-07-10T20:53:00-04:00", "x", "US-USJFKA"),
+        event("OT", "2099-07-10T20:54:00-04:00", "x", "somewhere"),
     ]
     stamps = [
         entry["timestamp"]
         for entry in _normalize(response(scans[::-1]), include_history=True)["history"]
     ]
     assert stamps == [
-        "2026-10-10T20:51:00+01:00",
-        "2026-10-10T20:52:00+02:00",
-        "2026-10-10T20:53:00",
-        "2026-10-10T20:54:00",
+        "2099-07-10T20:51:00+01:00",
+        "2099-07-10T20:52:00+02:00",
+        "2099-07-10T20:53:00-04:00",
+        "2099-07-10T20:54:00-04:00",
     ]
 
 
@@ -575,11 +605,25 @@ def test_scans_without_a_usable_code_are_skipped_silently(code, caplog):
     assert "Unrecognised" not in caplog.text
 
 
-def test_a_non_text_place_keeps_the_clock_as_given():
-    scan = event("OT", "2026-10-01T10:00:00", "x", "x")
+@pytest.fixture
+def ha_zone():
+    previous = dt_util.get_default_time_zone()
+    dt_util.set_default_time_zone(ZoneInfo("America/New_York"))
+    yield
+    dt_util.set_default_time_zone(previous)
+
+
+def test_a_non_text_place_is_read_in_the_home_assistant_zone(ha_zone):
+    scan = event("OT", "2099-01-15T10:00:00", "x", "x")
     scan["Mesto"] = None
     history = _normalize(response([scan]), include_history=True)["history"]
-    assert history[0]["timestamp"] == "2026-10-01T10:00:00"
+    assert history[0]["timestamp"] == "2099-01-15T10:00:00-05:00"
+
+
+def test_a_multi_zone_country_is_read_in_the_home_assistant_zone(ha_zone):
+    scan = event("OT", "2099-07-15T10:00:00", "x", "US-USJFKA")
+    history = _normalize(response([scan]), include_history=True)["history"]
+    assert history[0]["timestamp"] == "2099-07-15T10:00:00-04:00"
 
 
 # ---------------------------------------------------------------------------
@@ -631,12 +675,14 @@ def test_confirmed_codes_do_not_warn_as_unconfirmed(caplog):
         ("ŠABAC-1", "AAAAA-9"),
     ],
 )
-def test_unrecognised_place_form_warns_once_with_its_shape_only(place, shape, caplog):
-    scan = event("OT", "2026-10-01T10:00:00", "x", "x")
+def test_unrecognised_place_form_warns_once_with_its_shape_only(
+    place, shape, caplog, ha_zone
+):
+    scan = event("OT", "2099-01-15T10:00:00", "x", "x")
     scan["Mesto"] = place
     for _ in range(2):
         history = _normalize(response([scan]), include_history=True)["history"]
-    assert history[0]["timestamp"] == "2026-10-01T10:00:00"
+    assert history[0]["timestamp"] == "2099-01-15T10:00:00-05:00"
     assert caplog.text.count("place form") == 1
     assert f"shape={shape}" in caplog.text
     if place:
@@ -650,7 +696,7 @@ def test_known_place_forms_do_not_warn(caplog):
 
 
 def test_history_keeps_the_carriers_order_even_when_naive_times_disagree():
-    """A naive US time read as UTC must not jump ahead of a later Belgrade scan."""
+    """A US time read in the HA zone must not jump ahead of a later Belgrade scan."""
     scans = [
         event("OT", "2026-10-02T09:00:00", "later", "11003 IZMENIČNA POŠTA"),
         event("OT", "2026-10-02T08:30:00", "earlier", "US-USJFKA"),

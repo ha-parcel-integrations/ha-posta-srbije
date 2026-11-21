@@ -129,6 +129,10 @@
       "next_delivery": {
         "name": "Sledeća dostava"
       },
+      "en_route_to_pickup_point": {
+        "name": "Na putu do mesta preuzimanja",
+        "unit_of_measurement": "paketa"
+      },
       "awaiting_pickup": {
         "name": "Spremno za preuzimanje",
         "unit_of_measurement": "paketa"

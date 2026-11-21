@@ -35,10 +35,11 @@ you act in one of these areas:
   summary+diagnostic sensors. Add a new non-parcel sensor's unique_id to the set.
 - **Per-parcel sensors are removed by the summary sensor** via
   `entity_registry.async_remove` (self-removal races and leaves ghosts).
-- **The optional pickup-point summaries are a pair.** A carrier that can tell
-  a parcel is destined for a pickup point exposes
-  `en_route_to_pickup_point` for `pickup is true` before it arrives; one that
-  can reach `ParcelStatus.AT_PICKUP_POINT` also exposes `awaiting_pickup`.
+- **The pickup-point summaries are a pair.** A carrier that can deliver to a
+  pickup point or locker exposes both `en_route_to_pickup_point` and
+  `awaiting_pickup`, even before a real parcel has shown the status or flag
+  (they read 0 until then; record it in `PENDING_*`). A carrier without pickup
+  points exposes neither and keeps `pickup` constantly False.
   See *Parcel contract* in `CONVENTIONS.md`. Say "pickup point", not
   "ServicePoint"/"parcel shop"/"locker", for the generic concept; the
   example carrier demonstrates both canonical sensors.
@@ -59,8 +60,13 @@ exception to the no-format-regex convention (see *Tracking-code validation*).
   entered code is passed to `normalize_parcel(raw, tracking_code=...)` and
   becomes `barcode`; a number with no history yet has an empty `raw`.
 - **Status comes from the newest scan whose code maps**, not from the
-  highest-looking status. A delivery back to the sender is `returning`, not
-  `delivered`. No out-for-delivery code exists, so the hot polling tier never
+  highest-looking status. A pickup scan (`IZ`/`ZI`) after a return began is read as `UO`. A return stays `returning` with `delivered` False and keeps
+  being polled, including after the return-leg `Delivered` scan: the contract
+  lets a return count as delivered only on evidence of delivery at the sender,
+  and that wording has not been seen on a real return. Once a real return
+  confirms it, count it as delivered (with that scan as `delivered_at`). The
+  return-leg derivation itself is unconfirmed too.
+  No out-for-delivery code exists, so the hot polling tier never
   applies and nothing is mapped to it.
 - **Unconfirmed codes:** codes mapped without ever being seen on a real
   parcel (`_UNCONFIRMED_CODES`, plus the return-leg derivation) keep their
@@ -71,16 +77,21 @@ exception to the no-format-regex convention (see *Tracking-code validation*).
   set). `pickup_point` is `None` and in `PENDING_CAPABILITIES`: no pickup
   parcel has been seen, so nothing says which office holds it. `weight` is kg
   from grams, read from the acceptance scan only.
-- **Pickup sensors:** `awaiting_pickup` exists because the pickup scan codes
-  reach `at_pickup_point`. There is no `en_route_to_pickup_point` sensor:
-  nothing is known about a pickup point before arrival.
+- **Pickup sensors:** the post office holds parcels for collection, so both
+  `awaiting_pickup` and `en_route_to_pickup_point` exist. `pickup` is true
+  once a parcel has reached `at_pickup_point` and stays true after
+  collection. No payload names the route before arrival, so
+  `en_route_to_pickup_point` reads 0 until a real pickup parcel shows
+  otherwise, and `pickup_point` stays `None` (pending).
 - **Empty on purpose:** with no ETA, `next_delivery`, the calendar and
-  `delivery_time_changed` stay empty.
+  `delivery_time_changed` stay empty; `planned_*` still go through
+  `planned_window` / `planned_for_status` with the Belgrade zone.
 - **Timestamps:** the carrier stamps scans without an offset. A Serbian
   office is read as Europe/Belgrade; a foreign scan uses its country's clock
   only where that country has a single zone. For multi-zone countries
-  (the US, say) and for any place form that is neither, the time stays naive
-  on purpose, as given — guessing a zone would be wrong more often than not.
+  (the US, say) and for any place form that is neither, the time is read in
+  Home Assistant's default zone, so every timestamp is published with an
+  offset.
   An unrecognised place form logs a one-shot WARNING with its shape only
   (digits and letters masked), never the value. History keeps the carrier's
   own scan order, so a naive time can never reorder it against the status.

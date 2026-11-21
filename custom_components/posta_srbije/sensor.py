@@ -17,6 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from . import PostaSrbijeConfigEntry
 from .const import DOMAIN, ParcelStatus
@@ -53,6 +54,7 @@ async def async_setup_entry(
     non_parcel_unique_ids = {
         f"{entry_id}_incoming_parcels",
         f"{entry_id}_next_delivery",
+        f"{entry_id}_en_route_to_pickup_point",
         f"{entry_id}_awaiting_pickup",
         f"{entry_id}_delivered_parcels",
         f"{entry_id}_last_update",
@@ -77,6 +79,7 @@ async def async_setup_entry(
         for parcel in coordinator.data or []
     )
     entities.append(PostaSrbijeNextDeliverySensor(coordinator, entry))
+    entities.append(PostaSrbijeEnRouteToPickupPointSensor(coordinator, entry))
     entities.append(PostaSrbijeAwaitingPickupSensor(coordinator, entry))
     entities.append(PostaSrbijeDeliveredParcelsSensor(coordinator, entry))
     entities.append(PostaSrbijeLastUpdateSensor(coordinator, entry))
@@ -207,6 +210,7 @@ class PostaSrbijeNextDeliverySensor(
 
     def _delivery_moments(self) -> list[tuple[datetime, dict]]:
         result: list[tuple[datetime, dict]] = []
+        now = dt_util.utcnow()
         for parcel in self.coordinator.data or []:
             moment = parse_iso(parcel.get("planned_from"))
             if moment is None:
@@ -214,6 +218,8 @@ class PostaSrbijeNextDeliverySensor(
                     _LOGGER.debug(
                         "Could not parse delivery moment: %s", parcel["planned_from"]
                     )
+                continue
+            if (parse_iso(parcel.get("planned_to")) or moment) < now:
                 continue
             result.append((moment, parcel))
         return result
@@ -266,6 +272,23 @@ class _PostaSrbijePickupListSensor(
         raise NotImplementedError
 
 
+class PostaSrbijeEnRouteToPickupPointSensor(_PostaSrbijePickupListSensor):
+    """Active parcels destined for, but not yet at, a pickup point."""
+
+    _attr_translation_key = "en_route_to_pickup_point"
+    _suffix = "en_route_to_pickup_point"
+
+    def _parcels(self) -> list[dict]:
+        return [
+            parcel
+            for parcel in (self.coordinator.data or [])
+            if parcel.get("pickup")
+            and not parcel.get("delivered")
+            and parcel.get("status")
+            not in (ParcelStatus.AT_PICKUP_POINT, ParcelStatus.RETURNING)
+        ]
+
+
 class PostaSrbijeAwaitingPickupSensor(_PostaSrbijePickupListSensor):
     """Active parcels that have arrived at a pickup point."""
 
@@ -277,6 +300,7 @@ class PostaSrbijeAwaitingPickupSensor(_PostaSrbijePickupListSensor):
             parcel
             for parcel in (self.coordinator.data or [])
             if parcel.get("status") == ParcelStatus.AT_PICKUP_POINT
+            and not parcel.get("delivered")
         ]
 
 

@@ -37,7 +37,7 @@ A custom Home Assistant integration that tracks your [Pošta Srbije](https://www
 
 - Track any number of Pošta Srbije parcels by tracking code — no account needed
 - Per-parcel sensor with the canonical status (`registered` / `in_transit` / `at_pickup_point` / `delivered` / …), the carrier's own status text and the parcel's weight
-- Summary sensors: incoming parcels, parcels awaiting pickup, recently delivered parcels
+- Summary sensors: incoming parcels, parcels on their way to a pickup point, parcels awaiting pickup, recently delivered parcels
 - `posta_srbije.track_parcel` / `posta_srbije.untrack_parcel` services, so a dashboard button can add a parcel
 - Events + device triggers for no-code automations (parcel registered, status changed, delivered)
 - Opt-in per-parcel scan history
@@ -122,6 +122,7 @@ Standard HA removal applies: **Settings → Devices & Services → Pošta Srbije
 | `sensor.posta_srbije_incoming_parcels` | Number of active tracked parcels, full list under the `parcels` attribute |
 | `sensor.posta_srbije_parcel_<code>` | One per tracked parcel; state is the canonical status, attributes carry the full normalised parcel |
 | `sensor.posta_srbije_next_delivery` | Stays empty: Pošta Srbije gives no expected delivery time |
+| `sensor.posta_srbije_en_route_to_pickup_point` | Parcels heading for a post office that have not arrived yet (stays 0 until Pošta Srbije shows it), full list under the `parcels` attribute |
 | `sensor.posta_srbije_awaiting_pickup` | Parcels the post office holds for you, full list under the `parcels` attribute |
 | `sensor.posta_srbije_delivered_parcels` | Recently delivered parcels (see the retention option) |
 | `sensor.posta_srbije_last_successful_update` | Diagnostic: when Pošta Srbije was last polled successfully |
@@ -140,7 +141,7 @@ The `status` field is the carrier-agnostic enum shared by the whole integration 
 | `in_transit` | Dispatched, in transport or arrived at a post office along the way |
 | `at_pickup_point` | The addressee has been notified and the post office holds the parcel |
 | `delivered` | Delivered |
-| `returning` | Delivered back to the sender |
+| `returning` | On its way back to the sender; stays here (not delivered) until it is back |
 | `problem` | A delivery attempt failed |
 | `unknown` | No history yet, or a scan code we have not mapped yet |
 
