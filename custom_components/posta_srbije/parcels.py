@@ -276,7 +276,7 @@ def _event_timestamp(event: dict) -> str | None:
     place = event.get("Mesto")
     if not isinstance(place, str):
         place = ""
-    zone: ZoneInfo | None = None
+    zone: tzinfo | None = None
     if _SERBIAN_OFFICE.match(place):
         zone = BELGRADE
     elif foreign := _FOREIGN_OFFICE.match(place):
