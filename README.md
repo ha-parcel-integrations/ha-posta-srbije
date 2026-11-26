@@ -39,6 +39,7 @@ A custom Home Assistant integration that tracks your [Pošta Srbije](https://www
 - Per-parcel sensor with the canonical status (`registered` / `in_transit` / `at_pickup_point` / `delivered` / …), the carrier's own status text and the parcel's weight
 - Summary sensors: incoming parcels, parcels on their way to a pickup point, parcels awaiting pickup, recently delivered parcels
 - `posta_srbije.track_parcel` / `posta_srbije.untrack_parcel` services, so a dashboard button can add a parcel
+- A `contents` field on every parcel, set in your own words with the `posta_srbije.update_contents` service or the `contents` field of `posta_srbije.track_parcel`; it titles the calendar event and shows on the next-delivery sensor
 - Events + device triggers for no-code automations (parcel registered, status changed, delivered)
 - Opt-in per-parcel scan history
 - Manual refresh button and a diagnostic last-update sensor
@@ -165,8 +166,11 @@ Every payload is the full normalised parcel plus the hub's `device_id`. Events a
 
 | Service | Fields | Description |
 |---|---|---|
-| `posta_srbije.track_parcel` | `tracking_code` | Start tracking a parcel |
+| `posta_srbije.track_parcel` | `tracking_code`, `contents` (optional) | Start tracking a parcel, optionally noting what is in it |
 | `posta_srbije.untrack_parcel` | `tracking_code` | Stop tracking a parcel |
+| `posta_srbije.update_contents` | `tracking_code`, `contents` (optional) | Set what is in a parcel, tracked or not; an empty `contents` clears it |
+
+The `contents` text is stored in Home Assistant, not at Pošta Srbije. It titles the parcel's calendar event and shows on the next-delivery sensor, and it appears on the parcel's own `contents` field. Pošta Srbije gives no delivery time, so for now those two stay empty and the text shows on the parcel sensor and in events.
 
 ## Examples
 

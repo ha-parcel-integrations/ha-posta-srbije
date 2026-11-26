@@ -88,6 +88,10 @@
         "tracking_code": {
           "name": "Broj pošiljke",
           "description": "Broj pošiljke Pošte Srbije."
+        },
+        "contents": {
+          "name": "Sadržaj",
+          "description": "Šta je u paketu, sopstvenim rečima. Ponovni poziv za praćeni paket zamenjuje sadržaj; prazan tekst ga briše."
         }
       }
     },
@@ -98,6 +102,20 @@
         "tracking_code": {
           "name": "Broj pošiljke",
           "description": "Broj pošiljke Pošte Srbije koji više ne treba pratiti."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Ažuriraj sadržaj paketa",
+      "description": "Sopstvenim rečima podesite šta je u paketu sa ovim kodom za praćenje. Prazan tekst briše sadržaj.",
+      "fields": {
+        "tracking_code": {
+          "name": "Broj pošiljke",
+          "description": "Broj pošiljke Pošte Srbije."
+        },
+        "contents": {
+          "name": "Sadržaj",
+          "description": "Šta je u paketu, sopstvenim rečima. Prazan tekst ga briše."
         }
       }
     }
